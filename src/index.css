@@ -2,95 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Bridal Elegance Color Palette */
+    --background: 30 30% 98%;
+    --foreground: 340 20% 20%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 30 25% 97%;
+    --card-foreground: 340 20% 20%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 30 25% 97%;
+    --popover-foreground: 340 20% 20%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Blush Pink Primary */
+    --primary: 340 45% 70%;
+    --primary-foreground: 30 30% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Cream Secondary */
+    --secondary: 35 35% 92%;
+    --secondary-foreground: 340 20% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted Rose */
+    --muted: 340 15% 93%;
+    --muted-foreground: 340 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Rose Gold Accent */
+    --accent: 15 50% 70%;
+    --accent-foreground: 30 30% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 30 30% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 340 20% 88%;
+    --input: 340 20% 88%;
+    --ring: 340 45% 70%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom Bridal Colors */
+    --blush: 340 45% 85%;
+    --blush-dark: 340 45% 70%;
+    --cream: 35 35% 95%;
+    --champagne: 40 40% 80%;
+    --rose-gold: 15 50% 65%;
+    --gold: 40 60% 55%;
+    --soft-mauve: 320 25% 75%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Gradients */
+    --gradient-blush: linear-gradient(135deg, hsl(340 45% 85%), hsl(35 35% 92%));
+    --gradient-rose-gold: linear-gradient(135deg, hsl(15 50% 70%), hsl(340 45% 75%));
+    --gradient-cream: linear-gradient(180deg, hsl(30 30% 98%), hsl(35 35% 95%));
+    --gradient-hero: linear-gradient(135deg, hsl(340 35% 90% / 0.8), hsl(35 40% 95% / 0.9));
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-soft: 0 4px 20px hsl(340 30% 70% / 0.15);
+    --shadow-elegant: 0 8px 30px hsl(340 30% 70% / 0.2);
+    --shadow-glow: 0 0 40px hsl(340 45% 80% / 0.4);
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar */
+    --sidebar-background: 35 35% 97%;
+    --sidebar-foreground: 340 20% 25%;
+    --sidebar-primary: 340 45% 70%;
+    --sidebar-primary-foreground: 30 30% 98%;
+    --sidebar-accent: 35 35% 92%;
+    --sidebar-accent-foreground: 340 20% 25%;
+    --sidebar-border: 340 20% 88%;
+    --sidebar-ring: 340 45% 70%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 340 25% 8%;
+    --foreground: 35 30% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 340 20% 12%;
+    --card-foreground: 35 30% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 340 20% 12%;
+    --popover-foreground: 35 30% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 340 45% 65%;
+    --primary-foreground: 340 25% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 340 15% 18%;
+    --secondary-foreground: 35 30% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 340 15% 18%;
+    --muted-foreground: 340 15% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 15 45% 55%;
+    --accent-foreground: 35 30% 95%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 35 30% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 340 15% 20%;
+    --input: 340 15% 20%;
+    --ring: 340 45% 65%;
+
+    --blush: 340 35% 25%;
+    --blush-dark: 340 45% 50%;
+    --cream: 35 20% 15%;
+    --champagne: 40 30% 25%;
+    --rose-gold: 15 40% 45%;
+    --gold: 40 50% 45%;
+    --soft-mauve: 320 20% 35%;
+
+    --sidebar-background: 340 20% 10%;
+    --sidebar-foreground: 35 30% 95%;
+    --sidebar-primary: 340 45% 65%;
+    --sidebar-primary-foreground: 340 25% 8%;
+    --sidebar-accent: 340 15% 18%;
+    --sidebar-accent-foreground: 35 30% 95%;
+    --sidebar-border: 340 15% 20%;
+    --sidebar-ring: 340 45% 65%;
   }
 }
 
@@ -100,6 +126,87 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+  }
+
+  .font-serif {
+    font-family: 'Cormorant Garamond', serif;
+  }
+
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer utilities {
+  .text-gradient-rose {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(340 45% 65%), hsl(15 50% 60%));
+  }
+
+  .bg-gradient-blush {
+    background: var(--gradient-blush);
+  }
+
+  .bg-gradient-rose-gold {
+    background: var(--gradient-rose-gold);
+  }
+
+  .bg-gradient-cream {
+    background: var(--gradient-cream);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out forwards;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
