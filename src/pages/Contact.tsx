@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Phone, Mail, MapPin, Clock, MessageSquare, Send } from "lucide-react";
+import { Phone, Mail, MapPin, Clock, MessageSquare, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Layout } from "@/components/layout/Layout";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -74,21 +75,38 @@ const faqs = [
 
 export default function Contact() {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
-    subject: "",
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Message Sent!",
-      description: "We'll get back to you within 24 hours.",
+    setIsLoading(true);
+
+    const { error } = await supabase.from("contacts").insert({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      message: formData.message.trim(),
     });
-    setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+
+    if (error) {
+      toast({
+        title: "Failed to send message",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Message Sent!",
+        description: "We'll get back to you within 24 hours.",
+      });
+      setFormData({ name: "", email: "", message: "" });
+    }
+
+    setIsLoading(false);
   };
 
   return (
@@ -185,6 +203,8 @@ export default function Contact() {
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Your name"
                       required
+                      maxLength={100}
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -196,29 +216,8 @@ export default function Contact() {
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="your@email.com"
                       required
-                    />
-                  </div>
-                </motion.div>
-
-                <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="+91 98765 43210"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject *</Label>
-                    <Input
-                      id="subject"
-                      value={formData.subject}
-                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                      placeholder="How can we help?"
-                      required
+                      maxLength={255}
+                      disabled={isLoading}
                     />
                   </div>
                 </motion.div>
@@ -232,13 +231,24 @@ export default function Contact() {
                     placeholder="Tell us more about your inquiry..."
                     rows={6}
                     required
+                    maxLength={1000}
+                    disabled={isLoading}
                   />
                 </motion.div>
 
                 <motion.div variants={fadeInUp}>
-                  <Button variant="elegant" size="lg" type="submit">
-                    <Send className="h-4 w-4 mr-2" />
-                    Send Message
+                  <Button variant="elegant" size="lg" type="submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Message
+                      </>
+                    )}
                   </Button>
                 </motion.div>
               </form>

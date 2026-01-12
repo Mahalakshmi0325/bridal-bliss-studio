@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, Quote, ThumbsUp } from "lucide-react";
+import { Star, Quote, ThumbsUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Layout } from "@/components/layout/Layout";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Link } from "react-router-dom";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -22,68 +25,20 @@ const staggerContainer = {
   }
 };
 
-const reviews = [
-  {
-    id: 1,
-    name: "Meera Kapoor",
-    rating: 5,
-    date: "December 2024",
-    artist: "Priya Sharma",
-    text: "Absolutely stunning work! My wedding day look was beyond my dreams. Priya understood exactly what I wanted and executed it perfectly. The entire team was so professional and caring. I felt like a princess!",
-    helpful: 24,
-    verified: true,
-  },
-  {
-    id: 2,
-    name: "Sanya Mehta",
-    rating: 5,
-    date: "November 2024",
-    artist: "Elena Rose",
-    text: "Moonlight Elegance made me feel like a princess. Elena created the most beautiful hairstyle that stayed perfect throughout my wedding events. Their attention to detail is unmatched. Highly recommend!",
-    helpful: 18,
-    verified: true,
-  },
-  {
-    id: 3,
-    name: "Riya Gupta",
-    rating: 5,
-    date: "November 2024",
-    artist: "Anita Desai",
-    text: "From the trial to the wedding day, everything was perfect. Anita's saree draping skills are incredible - I received so many compliments! The artists understood exactly what I wanted and made me look stunning.",
-    helpful: 15,
-    verified: true,
-  },
-  {
-    id: 4,
-    name: "Kavya Reddy",
-    rating: 5,
-    date: "October 2024",
-    artist: "Priya Sharma",
-    text: "Best decision I made for my wedding! The bridal makeup was flawless and lasted the entire day. The team was punctual, professional, and incredibly talented. Worth every penny!",
-    helpful: 21,
-    verified: true,
-  },
-  {
-    id: 5,
-    name: "Neha Sharma",
-    rating: 4,
-    date: "October 2024",
-    artist: "Elena Rose",
-    text: "Great experience overall! The hairstyling was beautiful and exactly what I showed in my reference pictures. Only minor feedback would be the trial could have been a bit longer, but the final result was amazing.",
-    helpful: 12,
-    verified: true,
-  },
-  {
-    id: 6,
-    name: "Pooja Iyer",
-    rating: 5,
-    date: "September 2024",
-    artist: "Anita Desai",
-    text: "I had a fusion wedding look and Anita nailed it perfectly! She blended traditional elements with modern touches beautifully. My photos turned out amazing because of how well everything was done.",
-    helpful: 19,
-    verified: true,
-  },
-];
+interface Review {
+  id: string;
+  user_id: string;
+  artist_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_name?: string;
+}
+
+interface Artist {
+  id: string;
+  specialization: string[];
+}
 
 const ratingBreakdown = {
   5: 85,
@@ -95,21 +50,98 @@ const ratingBreakdown = {
 
 export default function Reviews() {
   const { toast } = useToast();
+  const { user, profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
   const [newReview, setNewReview] = useState({
-    name: "",
+    artist_id: "",
     rating: 5,
-    text: "",
+    comment: "",
   });
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchReviews();
+    fetchArtists();
+  }, []);
+
+  const fetchReviews = async () => {
+    const { data } = await supabase
+      .from("reviews")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) {
+      setReviews(data as Review[]);
+    }
+  };
+
+  const fetchArtists = async () => {
+    const { data } = await supabase
+      .from("artists")
+      .select("id, specialization")
+      .eq("verified", true);
+    
+    if (data) {
+      setArtists(data as Artist[]);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Review Submitted!",
-      description: "Thank you for your feedback. Your review will be published after verification.",
+
+    if (!user) {
+      toast({
+        title: "Please sign in",
+        description: "You need to be logged in to submit a review.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newReview.artist_id) {
+      toast({
+        title: "Please select an artist",
+        description: "Choose the artist you want to review.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    const { error } = await supabase.from("reviews").insert({
+      user_id: user.id,
+      artist_id: newReview.artist_id,
+      rating: newReview.rating,
+      comment: newReview.comment || null,
     });
-    setShowForm(false);
-    setNewReview({ name: "", rating: 5, text: "" });
+
+    if (error) {
+      toast({
+        title: "Failed to submit review",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Review Submitted!",
+        description: "Thank you for your feedback.",
+      });
+      setShowForm(false);
+      setNewReview({ artist_id: "", rating: 5, comment: "" });
+      fetchReviews();
+    }
+
+    setIsLoading(false);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      month: "long",
+      year: "numeric",
+    });
   };
 
   return (
@@ -158,7 +190,7 @@ export default function Reviews() {
                   <span className="font-display text-5xl font-semibold">4.9</span>
                   <Star className="h-10 w-10 text-gold fill-gold" />
                 </div>
-                <p className="text-muted-foreground">Based on 500+ reviews</p>
+                <p className="text-muted-foreground">Based on {reviews.length || "500+"}  reviews</p>
                 <div className="flex items-center justify-center md:justify-start gap-1 mt-4">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className="h-6 w-6 text-gold fill-gold" />
@@ -198,13 +230,19 @@ export default function Reviews() {
               <h2 className="font-display text-2xl font-semibold">
                 All Reviews
               </h2>
-              <Button variant="elegant" onClick={() => setShowForm(!showForm)}>
-                Write a Review
-              </Button>
+              {user ? (
+                <Button variant="elegant" onClick={() => setShowForm(!showForm)}>
+                  Write a Review
+                </Button>
+              ) : (
+                <Button variant="elegant" asChild>
+                  <Link to="/login">Sign in to Review</Link>
+                </Button>
+              )}
             </div>
 
             {/* Review Form */}
-            {showForm && (
+            {showForm && user && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -215,14 +253,22 @@ export default function Reviews() {
                 </h3>
                 <form onSubmit={handleSubmitReview} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="review-name">Your Name</Label>
-                    <Input
-                      id="review-name"
-                      value={newReview.name}
-                      onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
-                      placeholder="Enter your name"
-                      required
-                    />
+                    <Label htmlFor="artist">Select Artist *</Label>
+                    <Select
+                      value={newReview.artist_id}
+                      onValueChange={(value) => setNewReview({ ...newReview, artist_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose the artist you worked with" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {artists.map((artist) => (
+                          <SelectItem key={artist.id} value={artist.id}>
+                            {artist.specialization.join(", ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Rating</Label>
@@ -249,16 +295,23 @@ export default function Reviews() {
                     <Label htmlFor="review-text">Your Review</Label>
                     <Textarea
                       id="review-text"
-                      value={newReview.text}
-                      onChange={(e) => setNewReview({ ...newReview, text: e.target.value })}
+                      value={newReview.comment}
+                      onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
                       placeholder="Share your experience with us..."
                       rows={4}
-                      required
+                      maxLength={1000}
                     />
                   </div>
                   <div className="flex gap-4">
-                    <Button type="submit" variant="elegant">
-                      Submit Review
+                    <Button type="submit" variant="elegant" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit Review"
+                      )}
                     </Button>
                     <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                       Cancel
@@ -276,55 +329,61 @@ export default function Reviews() {
               variants={staggerContainer}
               className="space-y-6"
             >
-              {reviews.map((review) => (
-                <motion.div
-                  key={review.id}
-                  variants={fadeInUp}
-                  className="bg-card rounded-2xl p-8 shadow-soft hover:shadow-elegant transition-shadow duration-300"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-semibold">{review.name}</h3>
-                        {review.verified && (
+              {reviews.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No reviews yet. Be the first to share your experience!
+                </div>
+              ) : (
+                reviews.map((review) => (
+                  <motion.div
+                    key={review.id}
+                    variants={fadeInUp}
+                    className="bg-card rounded-2xl p-8 shadow-soft hover:shadow-elegant transition-shadow duration-300"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-semibold">Happy Bride</h3>
                           <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
                             Verified
                           </span>
-                        )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(review.created_at)}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {review.date} • Artist: {review.artist}
-                      </p>
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < review.rating
+                                ? "text-gold fill-gold"
+                                : "text-muted"
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${
-                            i < review.rating
-                              ? "text-gold fill-gold"
-                              : "text-muted"
-                          }`}
-                        />
-                      ))}
+
+                    {review.comment && (
+                      <div className="relative pl-6 mb-4">
+                        <Quote className="absolute left-0 top-0 h-4 w-4 text-primary/30" />
+                        <p className="text-muted-foreground leading-relaxed">
+                          {review.comment}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 pt-4 border-t border-border">
+                      <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+                        <ThumbsUp className="h-4 w-4" />
+                        Helpful
+                      </button>
                     </div>
-                  </div>
-
-                  <div className="relative pl-6 mb-4">
-                    <Quote className="absolute left-0 top-0 h-4 w-4 text-primary/30" />
-                    <p className="text-muted-foreground leading-relaxed">
-                      {review.text}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-4 pt-4 border-t border-border">
-                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                      <ThumbsUp className="h-4 w-4" />
-                      Helpful ({review.helpful})
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              )}
             </motion.div>
           </div>
         </div>

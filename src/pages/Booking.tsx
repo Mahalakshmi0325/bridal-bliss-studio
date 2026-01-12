@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Calendar, MapPin, Phone, Mail, MessageSquare, CheckCircle } from "lucide-react";
+import { Calendar, MapPin, Phone, Mail, MessageSquare, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Layout } from "@/components/layout/Layout";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -25,12 +28,6 @@ const staggerContainer = {
   }
 };
 
-const artists = [
-  { id: "1", name: "Priya Sharma", specialization: "Bridal Makeup" },
-  { id: "2", name: "Elena Rose", specialization: "Hair Styling" },
-  { id: "3", name: "Anita Desai", specialization: "Saree Draping" },
-];
-
 const services = [
   "Bridal Makeup",
   "Hair Styling",
@@ -39,18 +36,39 @@ const services = [
   "Complete Package",
 ];
 
-// Example booked dates (in real app, this would come from database)
-const bookedDates = [
-  new Date(2024, 1, 14),
-  new Date(2024, 1, 20),
-  new Date(2024, 2, 5),
-  new Date(2024, 2, 15),
+const timeSlots = [
+  "06:00 AM",
+  "07:00 AM",
+  "08:00 AM",
+  "09:00 AM",
+  "10:00 AM",
+  "11:00 AM",
+  "12:00 PM",
+  "01:00 PM",
+  "02:00 PM",
+  "03:00 PM",
+  "04:00 PM",
 ];
+
+interface Artist {
+  id: string;
+  user_id: string;
+  specialization: string[];
+  experience: number;
+  bio: string | null;
+  verified: boolean;
+  available: boolean;
+  rating: number | null;
+}
 
 export default function Booking() {
   const { toast } = useToast();
+  const { user, profile } = useAuth();
   const [date, setDate] = useState<Date | undefined>();
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [bookedDates, setBookedDates] = useState<Date[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -60,11 +78,65 @@ export default function Booking() {
     style: "",
     artist: "",
     service: "",
+    time: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Pre-fill form if user is logged in
+  useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        name: profile.name || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+      }));
+    }
+  }, [profile]);
+
+  // Fetch artists
+  useEffect(() => {
+    const fetchArtists = async () => {
+      const { data } = await supabase
+        .from("artists")
+        .select("*")
+        .eq("verified", true)
+        .eq("available", true);
+      
+      if (data) {
+        setArtists(data as Artist[]);
+      }
+    };
+    fetchArtists();
+  }, []);
+
+  // Fetch booked dates
+  useEffect(() => {
+    const fetchBookedDates = async () => {
+      const { data } = await supabase
+        .from("bookings")
+        .select("booking_date")
+        .in("status", ["pending", "admin_verified", "artist_accepted"]);
+      
+      if (data) {
+        const dates = data.map(b => new Date(b.booking_date));
+        setBookedDates(dates);
+      }
+    };
+    fetchBookedDates();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast({
+        title: "Please sign in",
+        description: "You need to be logged in to make a booking.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!date) {
       toast({
         title: "Please select a date",
@@ -74,19 +146,74 @@ export default function Booking() {
       return;
     }
 
-    // In a real app, this would submit to the backend
-    console.log({ ...formData, date });
-    setSubmitted(true);
-    toast({
-      title: "Booking Request Submitted!",
-      description: "We'll contact you within 24 hours to confirm your appointment.",
+    if (!formData.time) {
+      toast({
+        title: "Please select a time",
+        description: "Choose your preferred time slot.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.service) {
+      toast({
+        title: "Please select a service",
+        description: "Choose the service you need.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    // Convert time to 24-hour format
+    const timeParts = formData.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    let hours = parseInt(timeParts![1]);
+    const minutes = timeParts![2];
+    const period = timeParts![3].toUpperCase();
+    
+    if (period === "PM" && hours !== 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+    
+    const timeString = `${hours.toString().padStart(2, "0")}:${minutes}:00`;
+
+    const { error } = await supabase.from("bookings").insert({
+      user_id: user.id,
+      artist_id: formData.artist || null,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      service: formData.service,
+      style: formData.style || null,
+      booking_date: date.toISOString().split("T")[0],
+      booking_time: timeString,
+      location: formData.location,
+      message: formData.message || null,
+      status: "pending",
     });
+
+    if (error) {
+      toast({
+        title: "Booking Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setSubmitted(true);
+      toast({
+        title: "Booking Request Submitted!",
+        description: "We'll contact you within 24 hours to confirm your appointment.",
+      });
+    }
+
+    setIsLoading(false);
   };
 
   const isDateDisabled = (dateToCheck: Date) => {
-    // Disable past dates
-    if (dateToCheck < new Date()) return true;
-    // Disable booked dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dateToCheck < today) return true;
+    
     return bookedDates.some(
       (bookedDate) =>
         bookedDate.getDate() === dateToCheck.getDate() &&
@@ -160,6 +287,27 @@ export default function Booking() {
         </div>
       </section>
 
+      {/* Login Prompt */}
+      {!user && (
+        <section className="py-8 bg-primary/5 border-y border-primary/10">
+          <div className="container mx-auto px-4 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
+              <p className="text-muted-foreground">
+                Please sign in to make a booking
+              </p>
+              <div className="flex gap-3">
+                <Button variant="elegant" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/register">Create Account</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Booking Form */}
       <section className="py-20 lg:py-28">
         <div className="container mx-auto px-4 lg:px-8">
@@ -228,23 +376,43 @@ export default function Booking() {
                     />
                   </motion.div>
 
-                  <motion.div variants={fadeInUp} className="space-y-2">
-                    <Label htmlFor="service">Service Required *</Label>
-                    <Select
-                      value={formData.service}
-                      onValueChange={(value) => setFormData({ ...formData, service: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a service" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem key={service} value={service}>
-                            {service}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="service">Service Required *</Label>
+                      <Select
+                        value={formData.service}
+                        onValueChange={(value) => setFormData({ ...formData, service: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {services.map((service) => (
+                            <SelectItem key={service} value={service}>
+                              {service}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="time">Preferred Time *</Label>
+                      <Select
+                        value={formData.time}
+                        onValueChange={(value) => setFormData({ ...formData, time: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </motion.div>
 
                   <motion.div variants={fadeInUp} className="space-y-2">
@@ -259,7 +427,7 @@ export default function Booking() {
                       <SelectContent>
                         {artists.map((artist) => (
                           <SelectItem key={artist.id} value={artist.id}>
-                            {artist.name} - {artist.specialization}
+                            {artist.specialization.join(", ")} ({artist.experience} years exp)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -381,8 +549,21 @@ export default function Booking() {
                   </motion.div>
 
                   <motion.div variants={fadeInUp}>
-                    <Button variant="elegant" size="xl" type="submit" className="w-full">
-                      Submit Booking Request
+                    <Button 
+                      variant="elegant" 
+                      size="xl" 
+                      type="submit" 
+                      className="w-full"
+                      disabled={isLoading || !user}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit Booking Request"
+                      )}
                     </Button>
                   </motion.div>
                 </motion.div>
