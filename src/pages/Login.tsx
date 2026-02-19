@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
@@ -7,14 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-
 export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, role, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && role) {
+      redirectByRole(role);
+    }
+  }, [user, role]);
+
+  const redirectByRole = (userRole: string) => {
+    if (userRole === "artist") navigate("/artist-dashboard", { replace: true });
+    else if (userRole === "admin") navigate("/admin-dashboard", { replace: true });
+    else navigate("/", { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +45,7 @@ export default function Login() {
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-      navigate("/");
+      // Role-based redirect will be handled by the useEffect above
     }
 
     setIsLoading(false);
